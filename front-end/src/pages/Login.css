@@ -1,0 +1,141 @@
+/* General Page Layout */
+*{
+  margin: 0;
+}
+.login-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(to right, #cfe8ff, #e8f3ff, #bfd9ff);
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Navbar */
+.login-navbar {
+  background-color: #0a2a66; /* Dark Blue */
+  color: white;
+  padding: 1rem 2rem;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.login-navbar h1 {
+  font-size: 1.8rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+   font-family: 'Montserrat', sans-serif;
+}
+
+/* Main Content */
+.login-main {
+  flex-grow: 1;
+  display: flex;
+  
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.login-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 1rem;
+  padding: 2.5rem;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  animation: fadeIn 0.8s ease-out;
+  text-align: center;
+  
+}
+
+.login-card h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #0a2a66;
+}
+
+.login-card p {
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.login-btn {
+  display: inline-flex;      
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0.8rem 1.2rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: auto;              
+  min-width: 160px;         
+  text-align: center;
+}
+
+.login-btn.retailer {
+  background-color: #1d4ed8;
+  
+}
+
+.login-btn.retailer:hover {
+  background-color: #2563eb;
+  transform: scale(1.05);
+}
+
+.login-btn.warehouse {
+  background-color: #059669;
+}
+
+.login-btn.warehouse:hover {
+  background-color: #047857;
+  transform: scale(1.05);
+}
+
+/* Footer */
+.login-footer {
+  background-color: #0a2a66; /* Same as navbar for consistency */
+  color: white;
+  padding: 1.2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-footer p {
+  font-size: 0.9rem;
+}
+
+.login-footer .socials {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 1.3rem;
+}
+
+.login-footer .socials a {
+  color: white;
+  transition: color 0.3s ease;
+}
+
+.login-footer .socials a:hover {
+  color: #38bdf8; /* Lighter blue */
+}
+
+/* Animation */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
