@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./Login.css";
 import { FaUser, FaLock, FaMapMarkerAlt } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 export default function WarehouseAuth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -8,6 +9,7 @@ export default function WarehouseAuth() {
   const [location, setLocation] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const navigate = useNavigate();  // ✅ React Router navigation
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,7 +34,11 @@ export default function WarehouseAuth() {
       if (!res.ok) {
         setMessage(data.detail || "Something went wrong");
       } else {
-       alert(data.msg);
+        alert(data.msg);
+        if (isLogin) {
+          // ✅ Navigate to Dashboard after login
+          navigate("/warehouse/dashboard", { state: { ownerName } });
+        }
       }
     } catch (err) {
       setMessage("❌ Server error. Check if backend is running.");
@@ -41,7 +47,6 @@ export default function WarehouseAuth() {
 
   return (
     <div className="login-container">
-      {/* Navbar */}
       <nav className="login-navbar">
         <h1>Smart Supply Chain - Warehouse</h1>
       </nav>

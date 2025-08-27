@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import RetailerAuth from "./pages/RetailerAuth";
 import WarehouseAuth from "./pages/WarehouseAuth";
 import RetailerDashboard from "./pages/RetailerDashboard";
+import Dashboard from "./pages/WarehouseDashboard";
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="/retailer" element={<RetailerAuth />} />
         <Route path="/warehouse" element={<WarehouseAuth />} />
            <Route path="/retailer-dashboard" element={<RetailerDashboard />} />
+            <Route path="/warehouse/dashboard" element={<Dashboard />} />
       </Routes>
     </Router>
   );
