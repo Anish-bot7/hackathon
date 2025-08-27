@@ -1,112 +1,93 @@
 import React, { useState } from "react";
 import "./Login.css";
 import { FaLock, FaMapMarkerAlt, FaStore } from "react-icons/fa";
-import { registerRetailer, loginRetailer } from "../api";
-import { useNavigate } from "react-router-dom";  // ✅ Import navigate
+import { registerRetailer, loginRetailer, loginWarehouse, registerWarehouse } from "../api";
+import { useNavigate } from "react-router-dom";
 
 export default function RetailerAuth() {
+  const [isRetailer, setIsRetailer] = useState(true);
   const [isLogin, setIsLogin] = useState(true);
-  const [shopName, setShopName] = useState("");
-  const [location, setLocation] = useState("");
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const navigate = useNavigate(); // ✅ Initialize navigation
+  const [locationName, setLocationName] = useState("");
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
+
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
-      if (isLogin) {
-        // ✅ Login API call
-        const res = await loginRetailer({
-          shop_name: shopName,
-          password,
-        });
-        alert(res.data.msg); // e.g., "Retailer login successful"
-
-        // ✅ Redirect to Retailer Dashboard
-        navigate("/retailer-dashboard");
+      if (isRetailer) {
+        if (isLogin) {
+          const { data } = await loginRetailer({ email, password });
+          localStorage.setItem("retailer", JSON.stringify(data));
+          navigate("/retailer");
+        } else {
+          await registerRetailer({ name, email, password, location_name: locationName, lat: Number(lat), lng: Number(lng) });
+          alert("Retailer registered. Now login.");
+          setIsLogin(true);
+        }
       } else {
-        // ✅ Register API call
-        const res = await registerRetailer({
-          shop_name: shopName,
-          location,
-          password,
-        });
-        alert(res.data.msg); // e.g., "Retailer registered successfully"
-        setIsLogin(true); // switch to login after registration
+        if (isLogin) {
+          const { data } = await loginWarehouse({ email, password });
+          localStorage.setItem("warehouse", JSON.stringify(data));
+          navigate("/warehouse");
+        } else {
+          await registerWarehouse({ name, email, password, location_name: locationName, lat: Number(lat), lng: Number(lng) });
+          alert("Warehouse registered. Now login.");
+          setIsLogin(true);
+        }
       }
     } catch (err) {
-      alert(err.response?.data?.detail || "Something went wrong");
+      alert(err?.response?.data?.detail || "Error");
     }
   };
 
   return (
     <div className="login-container">
-      {/* Navbar */}
       <nav className="login-navbar">
-        <h1>Smart Supply Chain - Retailer</h1>
+        <h1>Smart Supply Chain</h1>
       </nav>
 
       <main className="login-main">
         <div className="login-card">
-          <h2>{isLogin ? "Retailer Login" : "Retailer Registration"}</h2>
-          <p className="mb-6 text-gray-700 text-center">
-            {isLogin
-              ? "Enter your shop name and password to login"
-              : "Fill details to register as a retailer"}
-          </p>
-
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            {!isLogin && (
-              <div className="flex items-center gap-2 border rounded-md px-3 py-2">
-                <FaMapMarkerAlt />
-                <input
-                  type="text"
-                  placeholder="Location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="outline-none w-full"
-                />
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 border rounded-md px-3 py-2">
-              <FaStore />
-              <input
-                type="text"
-                placeholder="Shop Name"
-                value={shopName}
-                onChange={(e) => setShopName(e.target.value)}
-                className="outline-none w-full"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 border rounded-md px-3 py-2">
-              <FaLock />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="outline-none w-full"
-              />
-            </div>
-
-            <button type="submit" className="login-btn retailer mt-2">
-              {isLogin ? "Login" : "Register"}
+          <h2>{isLogin ? "Login" : "Register"} as {isRetailer ? "Retailer" : "Warehouse"}</h2>
+          <p>Switch Role:{" "}
+            <button className="login-btn warehouse" onClick={() => setIsRetailer(v => !v)}>
+              {isRetailer ? "Use Warehouse" : "Use Retailer"}
             </button>
-          </form>
-
-          <p
-            className="mt-4 text-center text-sm text-blue-700 cursor-pointer"
-            onClick={() => setIsLogin(!isLogin)}
-          >
-            {isLogin
-              ? "Don't have an account? Register"
-              : "Already have an account? Login"}
           </p>
+
+          <form onSubmit={handleSubmit} style={{display: "grid", gap: 12}}>
+            {!isLogin && (
+              <>
+                <input placeholder="Name" value={name} onChange={e=>setName(e.target.value)} required />
+                <input placeholder="Location Name" value={locationName} onChange={e=>setLocationName(e.target.value)} required />
+                <input placeholder="Latitude" value={lat} onChange={e=>setLat(e.target.value)} required />
+                <input placeholder="Longitude" value={lng} onChange={e=>setLng(e.target.value)} required />
+              </>
+            )}
+            <input placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} required />
+            <input placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} required />
+
+            <div style={{display:"flex", gap:10, justifyContent:"center"}}>
+              <button className="login-btn retailer" type="submit">
+                {isLogin ? "Login" : "Register"}
+              </button>
+              <button type="button" className="login-btn warehouse" onClick={() => setIsLogin(v=>!v)}>
+                {isLogin ? "Create Account" : "Have Account?"}
+              </button>
+            </div>
+          </form>
         </div>
       </main>
+
+      <footer className="login-footer">
+        <p>© Smart Supply Chain</p>
+      </footer>
     </div>
   );
 }
