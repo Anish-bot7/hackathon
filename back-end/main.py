@@ -156,8 +156,21 @@ def place_order(order: OrderIn):
 
 @app.get("/retailers/{retailer_id}/default-order")
 def get_default_order(retailer_id: str):
-    d = default_orders.find_one({"retailer_id": retailer_id}, {"_id":0})
-    return d or {"retailer_id": retailer_id, "items": []}
+    d = default_orders.find_one({"retailer_id": retailer_id}, {"_id": 0})
+    if not d:
+        return {"retailer_id": retailer_id, "items": []}
+
+    enriched_items = []
+    for item in d.get("items", []):
+        stock_doc = stocks.find_one({"product_id": item["product_id"]})
+        enriched_items.append({
+            "product_id": item["product_id"],
+            "quantity": item["quantity"],
+            "product_name": item.get("product_name") or (stock_doc["product_name"] if stock_doc else "Unknown")
+        })
+    d["items"] = enriched_items
+    return d
+
 
 # ------------- WAREHOUSE DASHBOARD -------------
 @app.get("/warehouses/{warehouse_id}/orders")

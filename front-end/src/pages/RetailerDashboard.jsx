@@ -23,6 +23,13 @@ export default function RetailerDashboard() {
   const [pred, setPred] = useState(null);
   const [loadingPred, setLoadingPred] = useState(false);
 
+  // ✅ Helper to always ensure product_name exists
+  const enrichItems = (items = []) =>
+    items.map((item) => ({
+      ...item,
+      product_name: item.product_name || "Unknown",
+    }));
+
   // ✅ Fetch warehouses + default order
   useEffect(() => {
     if (!me?.retailer_id) return;
@@ -30,9 +37,11 @@ export default function RetailerDashboard() {
       try {
         const { data } = await getNearbyWarehouses(me.retailer_id, 10);
         setNearby(data?.warehouses || []);
+
         const d = await getDefaultOrder(me.retailer_id);
-        setDefaultOrder(d?.data?.items || []);
-        setCart(d?.data?.items || []);
+        const enriched = enrichItems(d?.data?.items || []);
+        setDefaultOrder(enriched);
+        setCart(enriched);
       } catch (err) {
         console.error("Failed fetching initial data:", err);
         alert("Error loading dashboard data.");
@@ -44,7 +53,7 @@ export default function RetailerDashboard() {
     setSelectedWarehouse(w);
     try {
       const { data } = await getWarehouseStock(w._id);
-      setStock(data?.stock || []);
+      setStock(enrichItems(data?.stock || []));
     } catch (err) {
       console.error("Error loading stock:", err);
       alert("Failed to fetch warehouse stock.");
@@ -66,7 +75,11 @@ export default function RetailerDashboard() {
       }
       return [
         ...prev,
-        { product_id: p.product_id, product_name: p.product_name, quantity: q },
+        {
+          product_id: p.product_id,
+          product_name: p.product_name || "Unknown",
+          quantity: q,
+        },
       ];
     });
   };
@@ -106,7 +119,7 @@ export default function RetailerDashboard() {
     }
   };
 
-  // 🔹 Lookup function for notifications (map id → product_name)
+  // 🔹 Always resolves product_id → product_name
   const getProductName = (pid) =>
     stock.find((p) => p.product_id === pid)?.product_name ||
     cart.find((c) => c.product_id === pid)?.product_name ||
@@ -227,45 +240,95 @@ export default function RetailerDashboard() {
         </button>
       </section>
 
-      {/* Prediction */}
-      <section className="card">
-        <h3>🔮 Predict Stock Finish Time (ML)</h3>
-        <p>Enter your current on-hand inventory (approx):</p>
-        <OnHandEditor onHand={onHand} setOnHand={setOnHand} />
-        <button
-          className="btn primary"
-          onClick={runPrediction}
-          disabled={loadingPred}
-        >
-          {loadingPred ? "Predicting..." : "Predict"}
-        </button>
+    {/* Prediction */}
+<section className="card">
+  <h3>🔮 Predict Stock Finish Time (ML)</h3>
+  <p>Enter your current on-hand inventory (approx):</p>
+  <OnHandEditor
+    onHand={onHand}
+    setOnHand={setOnHand}
+    getProductName={getProductName}
+  />
+  <button
+    className="btn primary"
+    onClick={runPrediction}
+    disabled={loadingPred}
+  >
+    {loadingPred ? "Predicting..." : "Predict"}
+  </button>
 
-        {pred && (
-          <div className="prediction-box">
-            <h4>Daily Usage (estimated)</h4>
-            <pre>{JSON.stringify(pred.daily_usage, null, 2)}</pre>
-            <h4>Days to Stockout</h4>
-            <pre>{JSON.stringify(pred.days_to_stockout, null, 2)}</pre>
-            {pred.notifications?.length ? (
-              <>
-                <h4>Notifications</h4>
-                <ul>
-                  {pred.notifications.map((n, i) => (
-                    <li key={i}>
-                      {getProductName(n.product_id)}: {n.message}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-          </div>
-        )}
-      </section>
+  {pred && (
+    <div className="prediction-box">
+      {/* Daily Usage */}
+      <h4>Daily Usage (estimated)</h4>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Usage / Day</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(pred.daily_usage || {}).map(([pid, qty]) => (
+            <tr key={pid}>
+              <td>{getProductName(pid)}</td>
+              <td>{qty}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Days to Stockout */}
+      <h4>Days to Stockout</h4>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Days</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(pred.days_to_stockout || {}).map(([pid, days]) => (
+            <tr key={pid}>
+              <td>{getProductName(pid)}</td>
+              <td>{days}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Notifications */}
+      {pred.notifications?.length ? (
+        <>
+          <h4>Notifications</h4>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pred.notifications.map((n, i) => (
+                <tr key={i}>
+                  <td>{getProductName(n.product_id)}</td>
+                  <td>{n.message}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ) : null}
+    </div>
+  )}
+</section>
+
     </div>
   );
 }
 
 // ✅ OnHand Editor
+// ✅ OnHand Editor with table view
 function OnHandEditor({ onHand, setOnHand }) {
   const [pid, setPid] = useState("");
   const [qty, setQty] = useState("");
@@ -280,23 +343,63 @@ function OnHandEditor({ onHand, setOnHand }) {
     setQty("");
   }, [pid, qty, setOnHand]);
 
+  const remove = (id) => {
+    setOnHand((prev) => {
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
+    });
+  };
+
   return (
     <div className="onhand-editor">
-      <input
-        placeholder="product_id"
-        value={pid}
-        onChange={(e) => setPid(e.target.value)}
-      />
-      <input
-        placeholder="on hand qty"
-        type="number"
-        value={qty}
-        onChange={(e) => setQty(e.target.value)}
-      />
-      <button className="btn small" onClick={add}>
-        Add/Update
-      </button>
-      <pre>{JSON.stringify(onHand, null, 2)}</pre>
+      <div className="flex gap-2 mb-2">
+        <input
+          placeholder="product_id"
+          value={pid}
+          onChange={(e) => setPid(e.target.value)}
+        />
+        <input
+          placeholder="on hand qty"
+          type="number"
+          value={qty}
+          onChange={(e) => setQty(e.target.value)}
+        />
+        <button className="btn small" onClick={add}>
+          Add/Update
+        </button>
+      </div>
+
+      {Object.keys(onHand).length ? (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Qty</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(onHand).map(([id, q]) => (
+              <tr key={id}>
+                {/* ✅ Using getProductName from parent via window scope */}
+                <td>{window.getProductName ? window.getProductName(id) : id}</td>
+                <td>{q}</td>
+                <td>
+                  <button
+                    className="btn danger small"
+                    onClick={() => remove(id)}
+                  >
+                    ❌ Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="text-gray-500">No on-hand stock added yet.</p>
+      )}
     </div>
   );
 }
