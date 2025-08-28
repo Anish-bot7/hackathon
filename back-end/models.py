@@ -1,47 +1,47 @@
-from pydantic import BaseModel, Field
-from typing import List, Dict
+from pydantic import BaseModel
 
 # ------------------- User Models -------------------
 class UserBase(BaseModel):
     name: str
-    email: str
-    password: str
-    location_name: str
-    lat: float
-    lng: float
+    shop_mobile: str
+    shop_address: str
+    city: str
+    region: str
+    password: str   # ✅ Added password here
 
-class RetailerIn(UserBase):
-    """Retailer registration input"""
-    pass
 
-class WarehouseIn(UserBase):
-    """Warehouse registration input"""
-    pass
-
-class LoginIn(BaseModel):
-    email: str
+class UserLogin(BaseModel):
+    shop_mobile: str
     password: str
 
-# ------------------- Stock / Orders -------------------
-class StockItem(BaseModel):
-    product_id: str
+
+# ------------------- Warehouse Models -------------------
+class WarehouseBase(BaseModel):
+    name: str
+    mobile: str
+    address: str
+    city: str
+    region: str
+    password: str   # ✅ Added password here
+
+
+class WarehouseLogin(BaseModel):
+    mobile: str
+    password: str
+
+
+# ------------------- Product Models -------------------
+class Product(BaseModel):
+    warehouse_id: str
     product_name: str
     quantity: int
+    price: float
 
-class OrderItem(BaseModel):
-    product_id: str
-    quantity: int
 
-class OrderIn(BaseModel):
+# ------------------- Order Models -------------------
+class Order(BaseModel):
     retailer_id: str
     warehouse_id: str
-    items: List[OrderItem]
-
-class OrderOut(BaseModel):
-    order_id: str
-    status: str
-
-# ------------------- ML Prediction -------------------
-class PredictInput(BaseModel):
-    # optional: provide on-hand inventory snapshot (per product) for better prediction
-    current_on_hand: Dict[str, int] = Field(default_factory=dict)
+    product_name:str
+    product_id: str
+    quantity: int
