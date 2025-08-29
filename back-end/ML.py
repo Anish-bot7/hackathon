@@ -8,10 +8,7 @@ from sklearn.metrics import mean_absolute_error
 
 np.random.seed(42)
 # Sample products i created.Should make it as adding products using the website
-products = [
-    {"product_id": 201, "name": "Maggi", "shelf_life_days": 180},
-    {"product_id": 202, "name": "Milk",  "shelf_life_days": 7},
-]
+
 
 manufacturers = pd.DataFrame([
     {"manufacturer_id": "M1", "product_id": 201, "unit_price": 10.5, "lead_time_days": 3},
