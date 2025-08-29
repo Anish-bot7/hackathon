@@ -9,7 +9,6 @@ import os
 
 from pymongo import MongoClient, ASCENDING
 
-# ✅ Import your updated models
 from models import (
     UserBase, UserLogin,
     WarehouseBase, WarehouseLogin,
@@ -28,14 +27,14 @@ if not MONGO_URI:
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 
-# Collections
+
 retailers = db["retailers"]
 warehouses = db["warehouses"]
 stocks = db["stocks"]             # warehouse stock
 orders = db["orders"]             # retailer orders
 default_orders = db["default_orders"]
 
-# Indexes
+
 retailers.create_index([("shop_mobile", ASCENDING), ("city", ASCENDING)], unique=True)
 warehouses.create_index([("mobile", ASCENDING), ("city", ASCENDING)], unique=True)
 stocks.create_index([("warehouse_id", ASCENDING)])
@@ -47,7 +46,7 @@ app = FastAPI(title="Smart Supply Chain API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow all origins (loosen later)
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -55,13 +54,13 @@ app.add_middleware(
 
 def oid(x): return str(x) if isinstance(x, ObjectId) else x
 
-# ---------------- AUTH ----------------
+
 @app.post("/auth/retailer/register")
 def register_retailer(data: UserBase):
     if retailers.find_one({"shop_mobile": data.shop_mobile}):
         raise HTTPException(400, "Retailer already exists in this city with same mobile")
     doc = data.dict()
-    doc["password"] = pwd.hash(doc["password"])  # hash password
+    doc["password"] = pwd.hash(doc["password"]) 
     res = retailers.insert_one(doc)
     return {"retailer_id": oid(res.inserted_id)}
 
@@ -70,7 +69,7 @@ def register_warehouse(data: WarehouseBase):
     if warehouses.find_one({"mobile": data.mobile}):
         raise HTTPException(400, "Warehouse already exists in this city with same mobile")
     doc = data.dict()
-    doc["password"] = pwd.hash(doc["password"])  # hash password
+    doc["password"] = pwd.hash(doc["password"])  
     res = warehouses.insert_one(doc)
     return {"warehouse_id": oid(res.inserted_id)}
 
@@ -100,17 +99,16 @@ def login_warehouse(data: WarehouseLogin):
         "region": u["region"]
     }
 
-# ------------- RETAILER DASHBOARD -------------
+
 @app.get("/retailers/{retailer_id}/nearby-warehouses")
 def get_nearby_warehouses(retailer_id: str):
     r = retailers.find_one({"_id": ObjectId(retailer_id)})
     if not r:
         raise HTTPException(404, "Retailer not found")
 
-    # Step 1: Filter warehouses in same city
+   
     city_matches = list(warehouses.find({"city": r["city"]}, {"name":1,"city":1,"region":1}))
 
-    # Step 2: Narrow by region if available
     region_matches = [w for w in city_matches if w["region"] == r["region"]]
 
     warehouses_final = region_matches if region_matches else city_matches
@@ -154,7 +152,7 @@ def get_warehouse_stocks(warehouse_id: str):
     for d in data:
         d["_id"] = oid(d["_id"])
     return data
-# ------------- WAREHOUSE STOCK -------------
+
 @app.get("/warehouses/{warehouse_id}/stock")
 def get_warehouse_stock(warehouse_id: str):
     data = list(stocks.find({"warehouse_id": warehouse_id}, {"_id":0}))
