@@ -1,32 +1,79 @@
-import axios from "axios";
+import axios from 'axios';
 
-const API = axios.create({
-  baseURL: "http://localhost:8000",
+// Create axios instance
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// ---- AUTH ----
-export const registerRetailer = (payload) => API.post("/auth/retailer/register", payload);
-export const loginRetailer = (payload) => API.post("/auth/retailer/login", payload);
-export const registerWarehouse = (payload) => API.post("/auth/warehouse/register", payload);
-export const loginWarehouse = (payload) => API.post("/auth/warehouse/login", payload);
+// Request interceptor
+api.interceptors.request.use(
+  (config) => {
+    // Add auth token if available
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-// ---- DASHBOARDS ----
-export const getNearbyWarehouses = (retailerId, radiusKm = 10) =>
-  API.get(`/retailers/${retailerId}/nearby-warehouses?radius_km=${radiusKm}`);
+// Response interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('userType');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
-export const getWarehouseStock = (warehouseId) =>
-  API.get(`/warehouses/${warehouseId}/stock`);
+// API functions
+export const authAPI = {
+  loginRetailer: (credentials) => api.post('/auth/retailer/login', credentials),
+  loginWarehouse: (credentials) => api.post('/auth/warehouse/login', credentials),
+  registerRetailer: (userData) => api.post('/auth/retailer/register', userData),
+  registerWarehouse: (userData) => api.post('/auth/warehouse/register', userData),
+};
 
-export const upsertWarehouseStock = (warehouseId, items) =>
-  API.post(`/warehouses/${warehouseId}/stock`, items);
+export const retailerAPI = {
+  getNearbyWarehouses: (retailerId) =>
+    api.get(`/retailers/${retailerId}/nearby-warehouses`),
+  getOrders: (retailerId, status) =>
+    api.get(`/retailers/${retailerId}/orders${status ? `?status=${status}` : ''}`),
+  placeOrder: (orderData) => api.post('/orders', orderData),
+};
 
-export const placeOrder = (order) => API.post("/orders", order);
-
-export const getDefaultOrder = (retailerId) =>
-  API.get(`/retailers/${retailerId}/default-order`);
-
-export const getWarehouseOrders = (warehouseId) =>
-  API.get(`/warehouses/${warehouseId}/orders`);
-
-export const predictStockout = (retailerId, currentOnHand) =>
-  API.post(`/retailers/${retailerId}/predict-stockout`, { current_on_hand: currentOnHand || {} });
+export const warehouseAPI = {
+  getNearbyRetailers: (warehouseId) =>
+    api.get(`/warehouses/${warehouseId}/nearby-retailers`),
+  getStock: (warehouseId) =>
+    api.get(`/warehouses/${warehouseId}/stock`),
+  addStock: (warehouseId, stockItems) =>
+    api.post(`/warehouses/${warehouseId}/stock`, stockItems),
+  getOrders: (warehouseId, status) =>
+    api.get(`/orders/warehouse/${warehouseId}${status ? `?status=${status}` : ''}`),
+  approveOrder: (orderId) =>
+    api.post(`/orders/${orderId}/approve`),
+  rejectOrder: (orderId) =>
+    api.post(`/orders/${orderId}/reject`),
+  getProducts: (warehouseId) =>
+    api.get(`/warehouses/${warehouseId}/products`),
+  trainModels: (warehouseId) =>
+    api.post(`/warehouses/${warehouseId}/train-models`),
+  getRestockPredictions: (warehouseId) =>
+    api.get(`/warehouses/${warehouseId}/restock-predictions`),
+  getDemandForecast: (productId, days) =>
+    api.get(`/products/${productId}/demand-forecast?days=${days || 14}`),
+  getAnalytics: (warehouseId) =>
+    api.get(`/analytics/dashboard/${warehouseId}`),
+};
