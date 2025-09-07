@@ -1,79 +1,81 @@
 import axios from 'axios';
 
-// Create axios instance
+const API_BASE_URL = 'http://localhost:8000';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-  timeout: 10000,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
-    // Add auth token if available
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// ============== AUTH API ==============
+export const registerRetailer = (data) => api.post('/auth/retailer/register', data);
+export const loginRetailer = (data) => api.post('/auth/retailer/login', data);
+export const registerWarehouse = (data) => api.post('/auth/warehouse/register', data);
+export const loginWarehouse = (data) => api.post('/auth/warehouse/login', data);
 
-// Response interceptor
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('userType');
-      window.location.href = '/login';
+// ============== RETAILER API ==============
+export const getNearbyWarehouses = (retailerId) => api.get(`/retailers/${retailerId}/nearby-warehouses`);
+export const getWarehouseProducts = (warehouseId) => api.get(`/warehouses/${warehouseId}/products`);
+export const placeOrder = (orderData) => api.post('/orders', orderData);
+export const getRetailerOrders = (retailerId) => api.get(`/retailers/${retailerId}/orders`);
+
+// ============== WAREHOUSE API ==============
+export const getWarehouseStock = (warehouseId) => api.get(`/warehouses/${warehouseId}/stock`);
+export const addWarehouseStock = (warehouseId, stockItems) => api.post(`/warehouses/${warehouseId}/stock`, stockItems);
+export const getWarehouseOrders = (warehouseId, status) => api.get(`/warehouses/${warehouseId}/orders${status ? `?status=${status}` : ''}`);
+export const approveOrder = (orderId) => api.post(`/orders/${orderId}/approve`);
+export const rejectOrder = (orderId) => api.post(`/orders/${orderId}/reject`);
+
+// ============== ML/AI API ==============
+export const trainModels = (warehouseId) => api.post(`/warehouses/${warehouseId}/train-models`);
+export const getRestockPredictions = (warehouseId) => api.get(`/warehouses/${warehouseId}/restock-predictions`);
+export const getDemandForecast = (productId, days = 7) => api.get(`/products/${productId}/demand-forecast?days=${days}`);
+export const getAnalyticsDashboard = (warehouseId) => api.get(`/analytics/dashboard/${warehouseId}`);
+
+// ============== PREDICTION API ==============
+export const predictStockout = async (retailerId, currentStock) => {
+  try {
+    // This would typically be a separate endpoint, but we'll simulate it
+    const predictions = {};
+    for (const [productId, stock] of Object.entries(currentStock)) {
+      const avgDemand = Math.random() * 3 + 1; // Simulated
+      const daysLeft = stock / avgDemand;
+      predictions[productId] = {
+        daily_usage: avgDemand.toFixed(2),
+        days_to_stockout: daysLeft.toFixed(1)
+      };
     }
-    return Promise.reject(error);
+    
+    const notifications = [];
+    Object.entries(predictions).forEach(([pid, pred]) => {
+      const days = parseFloat(pred.days_to_stockout);
+      if (days < 3) {
+        notifications.push({
+          product_id: pid,
+          message: `URGENT: Stock will finish in ${days.toFixed(1)} days`,
+          priority: "HIGH"
+        });
+      } else if (days < 7) {
+        notifications.push({
+          product_id: pid,
+          message: `WARNING: Stock will finish in ${days.toFixed(1)} days`,
+          priority: "MEDIUM"
+        });
+      }
+    });
+    
+    return {
+      data: {
+        daily_usage: Object.fromEntries(Object.entries(predictions).map(([k,v]) => [k, v.daily_usage])),
+        days_to_stockout: Object.fromEntries(Object.entries(predictions).map(([k,v]) => [k, v.days_to_stockout])),
+        notifications
+      }
+    };
+  } catch (error) {
+    throw error;
   }
-);
-
-// API functions
-export const authAPI = {
-  loginRetailer: (credentials) => api.post('/auth/retailer/login', credentials),
-  loginWarehouse: (credentials) => api.post('/auth/warehouse/login', credentials),
-  registerRetailer: (userData) => api.post('/auth/retailer/register', userData),
-  registerWarehouse: (userData) => api.post('/auth/warehouse/register', userData),
 };
 
-export const retailerAPI = {
-  getNearbyWarehouses: (retailerId) =>
-    api.get(`/retailers/${retailerId}/nearby-warehouses`),
-  getOrders: (retailerId, status) =>
-    api.get(`/retailers/${retailerId}/orders${status ? `?status=${status}` : ''}`),
-  placeOrder: (orderData) => api.post('/orders', orderData),
-};
-
-export const warehouseAPI = {
-  getNearbyRetailers: (warehouseId) =>
-    api.get(`/warehouses/${warehouseId}/nearby-retailers`),
-  getStock: (warehouseId) =>
-    api.get(`/warehouses/${warehouseId}/stock`),
-  addStock: (warehouseId, stockItems) =>
-    api.post(`/warehouses/${warehouseId}/stock`, stockItems),
-  getOrders: (warehouseId, status) =>
-    api.get(`/orders/warehouse/${warehouseId}${status ? `?status=${status}` : ''}`),
-  approveOrder: (orderId) =>
-    api.post(`/orders/${orderId}/approve`),
-  rejectOrder: (orderId) =>
-    api.post(`/orders/${orderId}/reject`),
-  getProducts: (warehouseId) =>
-    api.get(`/warehouses/${warehouseId}/products`),
-  trainModels: (warehouseId) =>
-    api.post(`/warehouses/${warehouseId}/train-models`),
-  getRestockPredictions: (warehouseId) =>
-    api.get(`/warehouses/${warehouseId}/restock-predictions`),
-  getDemandForecast: (productId, days) =>
-    api.get(`/products/${productId}/demand-forecast?days=${days || 14}`),
-  getAnalytics: (warehouseId) =>
-    api.get(`/analytics/dashboard/${warehouseId}`),
-};
+export default api;

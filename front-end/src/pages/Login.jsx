@@ -1,51 +1,115 @@
-import React from "react";
-import "./Login.css";
-import { FaStore, FaWarehouse, FaTwitter, FaLinkedin, FaInstagram, FaEnvelope } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../Authcontext';
+import "../styles/styles.css";
 
-export default function Login() {
+const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const [userType, setUserType] = useState('retailer');
+  const [formData, setFormData] = useState({
+    shop_mobile: '',
+    mobile: '',
+    password: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    const credentials = userType === 'retailer' 
+      ? { shop_mobile: formData.shop_mobile, password: formData.password }
+      : { mobile: formData.mobile, password: formData.password };
+
+    const result = await login(credentials, userType);
+    
+    if (result.success) {
+      navigate(userType === 'retailer' ? '/retailer-dashboard' : '/warehouse-dashboard');
+    } else {
+      setError(result.message);
+    }
+    setLoading(false);
+  };
 
   return (
     <div className="login-container">
-      {/* Navbar */}
-      <nav className="login-navbar">
-        <h1>Smart Supply Chain</h1>
-      </nav>
-
-      {/* Main Login Section */}
-      <main className="login-main">
-        <div className="login-card">
-          <h2>Welcome Back</h2>
-          <p className="mb-6 text-gray-700 text-center">Login as Retailer or Warehouse</p>
-
-          <div className="flex flex-row gap-6 justify-center items-center mt-6">
-            <button
-              className="login-btn retailer"
-              onClick={() => navigate("/retailer")}
-            >
-              <FaStore size={20} /> Retailer
-            </button>
-            <button
-              className="login-btn warehouse"
-              onClick={() => navigate("/warehouse")}
-            >
-              <FaWarehouse size={20} /> Warehouse
-            </button>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="login-footer">
-        <p>© 2025 Smart Supply Chain. All rights reserved.</p>
-        <div className="socials">
-          <a href="#"><FaTwitter /></a>
-          <a href="#"><FaLinkedin /></a>
-          <a href="#"><FaInstagram /></a>
-          <a href="mailto:support@supplychain.com"><FaEnvelope /></a>
-        </div>
-      </footer>
+  <div className="login-card">
+    <div className="text-center mb-8">
+      <h2 className="login-title">Welcome Back</h2>
+      <p className="login-subtitle mt-2">Sign in to your account</p>
     </div>
+
+    {/* User Type Selection */}
+    <div className="mb-6 grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-lg">
+      <button
+        type="button"
+        onClick={() => setUserType('retailer')}
+        className={`user-type-btn py-2 px-4 text-sm ${userType === 'retailer' ? 'active' : 'text-gray-700 hover:text-gray-900'}`}
+      >
+        🏪 Retailer
+      </button>
+      <button
+        type="button"
+        onClick={() => setUserType('warehouse')}
+        className={`user-type-btn py-2 px-4 text-sm ${userType === 'warehouse' ? 'active' : 'text-gray-700 hover:text-gray-900'}`}
+      >
+        🏭 Warehouse
+      </button>
+    </div>
+
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {error && <div className="error-msg">{error}</div>}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {userType === 'retailer' ? 'Shop Mobile Number' : 'Mobile Number'}
+        </label>
+        <input
+          type="tel"
+          name={userType === 'retailer' ? 'shop_mobile' : 'mobile'}
+          value={userType === 'retailer' ? formData.shop_mobile : formData.mobile}
+          onChange={(e) => setFormData({...formData, [e.target.name]: e.target.value})}
+          className="input-field w-full"
+          placeholder="Enter mobile number"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+        <input
+          type="password"
+          name="password"
+          value={formData.password}
+          onChange={(e) => setFormData({...formData, password: e.target.value})}
+          className="input-field w-full"
+          placeholder="Enter password"
+          required
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="submit-btn w-full py-3 px-4 disabled:opacity-50"
+      >
+        {loading ? 'Signing in...' : 'Sign In'}
+      </button>
+    </form>
+
+    <div className="mt-6 text-center text-sm text-gray-600">
+      Don't have an account?{' '}
+      <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
+        Sign up here
+      </Link>
+    </div>
+  </div>
+</div>
+
   );
-}
+};
+
+export default Login;
